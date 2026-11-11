@@ -1,0 +1,2378 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f3d6e" />
+  <title>氣象海象與防災資訊整合入口 | LINE LIFF & 跨裝置工作台</title>
+  <!-- 引入 LINE 官方 LIFF SDK -->
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/2.22.3/sdk.js"></script>
+  <style>
+    /* ==================== 1. 全域變數與主題系統（支援淺色 / 深色模式） ==================== */
+    :root {
+      --bg-page: #f0f5fa;
+      --bg-header: linear-gradient(135deg, #0b2f59 0%, #145494 55%, #1d74b8 100%);
+      --bg-surface: #ffffff;
+      --bg-surface-soft: #f7fafd;
+      --bg-pill: #e6eef7;
+      --bg-pill-hover: #d7e5f4;
+      --text-primary: #14263d;
+      --text-secondary: #4e647d;
+      --text-muted: #788ca3;
+      --border-color: #dce6f0;
+      --accent-blue: #1565c0;
+      --accent-teal: #00897b;
+      --accent-orange: #e65100;
+      --accent-red: #c62828;
+      --accent-line: #06c755;
+      --shadow-sm: 0 2px 6px rgba(15, 45, 80, 0.05);
+      --shadow-md: 0 8px 20px rgba(15, 45, 80, 0.09);
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+      --focus-ring: 0 0 0 3px rgba(21, 101, 192, 0.28);
+    }
+
+    html[data-theme="dark"] {
+      --bg-page: #0c1724;
+      --bg-header: linear-gradient(135deg, #081a33 0%, #0f335c 55%, #134a82 100%);
+      --bg-surface: #132234;
+      --bg-surface-soft: #182b40;
+      --bg-pill: #1b314a;
+      --bg-pill-hover: #24405f;
+      --text-primary: #eaf2fb;
+      --text-secondary: #aec2d8;
+      --text-muted: #7f97b2;
+      --border-color: #243b55;
+      --accent-blue: #58a6ff;
+      --accent-teal: #3ddbd9;
+      --accent-orange: #ff9f43;
+      --accent-red: #ff6b6b;
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
+      --shadow-md: 0 10px 24px rgba(0, 0, 0, 0.35);
+      --focus-ring: 0 0 0 3px rgba(88, 166, 255, 0.35);
+    }
+
+    /* ==================== 2. 基礎排版與跨裝置重置 ==================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif;
+      background-color: var(--bg-page);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding-bottom: calc(28px + env(safe-area-inset-bottom));
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button {
+      font-family: inherit;
+    }
+
+    /* ==================== 3. 頂部氣象導覽橫幅 ==================== */
+    .hero-header {
+      background: var(--bg-header);
+      color: #ffffff;
+      padding: calc(16px + env(safe-area-inset-top)) 16px 18px;
+      box-shadow: 0 4px 16px rgba(10, 35, 66, 0.22);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1240px;
+      margin: 0 auto;
+    }
+
+    .hero-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .brand-badge {
+      width: 54px;
+      height: 54px;
+      padding: 4px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.65);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(8, 25, 48, 0.22);
+    }
+
+    .brand-logo {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    @media (min-width: 640px) {
+      .brand-badge {
+        width: 62px;
+        height: 62px;
+      }
+    }
+
+    .brand-title {
+      margin: 0;
+      font-size: clamp(1.12rem, 2.2vw, 1.5rem);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .brand-subtitle {
+      margin: 2px 0 0;
+      font-size: 0.84rem;
+      color: rgba(255, 255, 255, 0.86);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .env-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 11px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      font-size: 0.78rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .env-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ffd54f;
+    }
+
+    .env-badge.is-line .env-dot {
+      background: #06c755;
+      box-shadow: 0 0 0 3px rgba(6, 199, 85, 0.28);
+    }
+
+    .icon-toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 36px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      background: rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.18s ease, transform 0.12s ease;
+    }
+
+    .icon-toggle-btn:hover {
+      background: rgba(255, 255, 255, 0.24);
+    }
+
+    .icon-toggle-btn:active {
+      transform: scale(0.97);
+    }
+
+    /* ==================== 4. 搜尋列與置頂分類導覽列 ==================== */
+    .sticky-toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background: rgba(240, 245, 250, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      padding: 10px 16px;
+    }
+
+    html[data-theme="dark"] .sticky-toolbar {
+      background: rgba(12, 23, 36, 0.92);
+    }
+
+    .toolbar-inner {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .search-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .search-box {
+      position: relative;
+      flex: 1 1 260px;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .search-input {
+      width: 100%;
+      min-height: 42px;
+      padding: 8px 38px 8px 36px;
+      border-radius: 11px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      font-size: 0.94rem;
+      outline: none;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .search-input:focus {
+      border-color: var(--accent-blue);
+      box-shadow: var(--focus-ring);
+    }
+
+    .clear-search-btn {
+      position: absolute;
+      right: 8px;
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 50%;
+      background: var(--bg-pill);
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .clear-search-btn.visible {
+      display: inline-flex;
+    }
+
+    .count-summary {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      font-weight: 500;
+    }
+
+    /* 橫向滑動分類頁籤（手機可順暢滑動，電腦與平板自動排列） */
+    .category-tabs {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .category-tabs::-webkit-scrollbar {
+      display: none;
+    }
+
+    .tab-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 38px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      font-size: 0.86rem;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.18s ease;
+    }
+
+    .tab-pill:hover {
+      background: var(--bg-pill);
+      color: var(--text-primary);
+    }
+
+    .tab-pill.active {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+      color: #ffffff;
+      box-shadow: 0 3px 10px rgba(21, 101, 192, 0.25);
+    }
+
+    /* ==================== 5. 主內容區與響應式網格系統 ==================== */
+    .main-content {
+      padding: 18px 16px 24px;
+    }
+
+    .favorites-panel {
+      margin-bottom: 18px;
+      padding: 14px 16px;
+      border-radius: var(--radius-lg);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .favorites-panel.hidden {
+      display: none;
+    }
+
+    .section-group {
+      margin-bottom: 22px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .section-group.hidden {
+      display: none;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .section-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .section-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      height: 28px;
+      padding: 0 8px;
+      border-radius: 8px;
+      background: var(--bg-pill);
+      color: var(--accent-blue);
+      font-size: 0.82rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .section-tag {
+      font-size: 0.76rem;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: var(--bg-surface-soft);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    /* 響應式按鈕格線：
+       - 手機 (< 560px)：1 欄（多項目緊湊好點）或 2 欄短按鈕，確保文字不擠壓折行
+       - 大手機 / 小平板 (560px ~ 899px)：2 欄
+       - 平板橫向 / 小筆電 (900px ~ 1179px)：3 欄
+       - 筆電與一般桌機 (>= 1180px)：4 欄 */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    @media (min-width: 520px) {
+      .cards-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (min-width: 860px) {
+      .cards-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .hero-header {
+        padding: 20px 24px 22px;
+      }
+      .sticky-toolbar {
+        padding: 12px 24px;
+      }
+      .main-content {
+        padding: 22px 24px 32px;
+      }
+      .toolbar-inner {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .search-row {
+        flex: 0 0 340px;
+      }
+      .category-tabs {
+        flex: 1;
+        justify-content: flex-end;
+      }
+    }
+
+    @media (min-width: 1160px) {
+      .cards-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+    }
+
+    /* ==================== 6. 單一服務按鈕卡片 ==================== */
+    .service-card {
+      position: relative;
+      display: flex;
+      align-items: stretch;
+      background: var(--bg-surface-soft);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background-color 0.16s ease;
+      overflow: hidden;
+    }
+
+    .service-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--accent-blue);
+      background: var(--bg-surface);
+    }
+
+    .service-link {
+      flex: 1;
+      min-width: 0;
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 10px 12px 14px;
+      cursor: pointer;
+    }
+
+    .service-link:focus-visible {
+      outline: none;
+      box-shadow: inset var(--focus-ring);
+    }
+
+    .service-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+      background: var(--bg-pill);
+    }
+
+    .tone-warn .service-icon { background: rgba(198, 40, 40, 0.12); }
+    .tone-typhoon .service-icon { background: rgba(230, 81, 0, 0.13); }
+    .tone-ocean .service-icon { background: rgba(0, 137, 123, 0.13); }
+    .tone-disaster .service-icon { background: rgba(106, 27, 154, 0.12); }
+
+    .service-meta {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .service-name {
+      display: block;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.3;
+      word-break: keep-all;
+    }
+
+    .service-desc {
+      display: block;
+      margin-top: 2px;
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-actions {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      border-left: 1px solid var(--border-color);
+      background: transparent;
+      flex-shrink: 0;
+    }
+
+    .mini-action-btn {
+      width: 38px;
+      flex: 1;
+      min-height: 30px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.15s ease, color 0.15s ease;
+    }
+
+    .mini-action-btn:hover {
+      background: var(--bg-pill);
+      color: var(--accent-blue);
+    }
+
+    .mini-action-btn.is-fav {
+      color: #f59e0b;
+    }
+
+    .mini-action-btn.send-line-btn {
+      border-top: 1px solid var(--border-color);
+      font-size: 0.82rem;
+    }
+
+    .mini-action-btn.send-line-btn.hidden {
+      display: none;
+    }
+
+    /* ==================== 7. 空搜尋結果、LINE 工具列與頁尾 ==================== */
+    .empty-state {
+      display: none;
+      text-align: center;
+      padding: 46px 16px;
+      background: var(--bg-surface);
+      border: 1px dashed var(--border-color);
+      border-radius: var(--radius-lg);
+      color: var(--text-secondary);
+    }
+
+    .empty-state.visible {
+      display: block;
+    }
+
+    .empty-state button {
+      margin-top: 12px;
+      padding: 8px 18px;
+      border-radius: 999px;
+      border: none;
+      background: var(--accent-blue);
+      color: #ffffff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: calc(20px + env(safe-area-inset-bottom));
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(17, 34, 54, 0.94);
+      color: #ffffff;
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease, transform 0.22s ease;
+      z-index: 100;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .page-footer {
+      text-align: center;
+      padding: 12px 16px 24px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .footer-maker {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+    }
+
+    .footer-sources {
+      line-height: 1.55;
+      max-width: 920px;
+    }
+
+    .footer-care {
+      margin-top: 4px;
+      padding: 8px 18px;
+      border-radius: 999px;
+      background: var(--bg-pill);
+      border: 1px solid var(--border-color);
+      color: var(--accent-blue);
+      font-size: 0.9rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    /* ==================== 8. 縣市／鄉鎮選擇彈窗（跨裝置：手機底部抽屜／平板桌機置中視窗） ==================== */
+    .picker-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      background: rgba(8, 22, 40, 0.56);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .picker-backdrop.open {
+      display: flex;
+    }
+
+    .picker-modal {
+      width: 100%;
+      max-height: 88dvh;
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      border-top-left-radius: 20px;
+      border-top-right-radius: 20px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: sheetSlideUp 0.2s ease-out;
+    }
+
+    @keyframes sheetSlideUp {
+      from { transform: translateY(20px); opacity: 0.6; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    @media (min-width: 640px) {
+      .picker-backdrop {
+        align-items: center;
+        padding: 20px;
+      }
+      .picker-modal {
+        max-width: 780px;
+        max-height: 84dvh;
+        border-radius: 20px;
+      }
+    }
+
+    .picker-header {
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid var(--border-color);
+      background: var(--bg-surface-soft);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .picker-header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .picker-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .picker-back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      min-height: 34px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--accent-blue);
+      background: rgba(21, 101, 192, 0.1);
+      color: var(--accent-blue);
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .picker-back-btn.hidden {
+      display: none;
+    }
+
+    .picker-title {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .picker-county-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 10px;
+      border-radius: 999px;
+      background: var(--accent-blue);
+      color: #ffffff;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .picker-close-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      font-size: 1rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .picker-close-btn:hover {
+      background: var(--bg-pill);
+      color: var(--text-primary);
+    }
+
+    .picker-subnote-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+    }
+
+    .picker-overview-link {
+      color: var(--accent-blue);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .picker-overview-link:hover {
+      text-decoration: underline;
+    }
+
+    .picker-search-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .picker-search-input {
+      width: 100%;
+      min-height: 40px;
+      padding: 8px 34px 8px 34px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    .picker-search-input:focus {
+      border-color: var(--accent-blue);
+      box-shadow: var(--focus-ring);
+    }
+
+    .picker-body {
+      padding: 14px 16px calc(18px + env(safe-area-inset-bottom));
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      flex: 1;
+    }
+
+    .picker-area-block {
+      margin-bottom: 16px;
+    }
+
+    .picker-area-block:last-child {
+      margin-bottom: 4px;
+    }
+
+    .picker-area-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      padding-left: 8px;
+      border-left: 3px solid var(--accent-blue);
+    }
+
+    .picker-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    @media (min-width: 480px) {
+      .picker-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (min-width: 720px) {
+      .picker-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+    }
+
+    .picker-item-wrap {
+      display: flex;
+      align-items: stretch;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-surface-soft);
+      overflow: hidden;
+      transition: transform 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease, background-color 0.14s ease;
+    }
+
+    .picker-item-wrap:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent-blue);
+      background: var(--bg-surface);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .picker-item-btn {
+      flex: 1;
+      min-width: 0;
+      min-height: 46px;
+      padding: 8px 10px;
+      border: none;
+      background: transparent;
+      color: var(--text-primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      text-align: left;
+      font-size: 0.92rem;
+      font-weight: 700;
+    }
+
+    .picker-item-sub {
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .picker-line-chat-btn {
+      width: 34px;
+      border: none;
+      border-left: 1px solid var(--border-color);
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      flex-shrink: 0;
+    }
+
+    .picker-line-chat-btn.hidden {
+      display: none;
+    }
+
+    .picker-line-chat-btn:hover {
+      background: var(--bg-pill);
+      color: var(--accent-blue);
+    }
+
+    .picker-empty {
+      text-align: center;
+      padding: 28px 12px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 頂部氣象標題區 -->
+  <header class="hero-header">
+    <div class="container hero-top">
+      <div class="brand-wrap">
+        <div class="brand-badge">
+          <img id="brandLogoImg" class="brand-logo" src="LOGO/氣象報報.png" alt="氣象報報 LOGO" />
+        </div>
+        <div>
+          <h1 class="brand-title">臺灣氣象海象與防災資訊入口</h1>
+          <p class="brand-subtitle">整合中央氣象署 CWA、NCDR、環境部、水利與交通防災即時入口（跨裝置響應式）</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <span id="envBadge" class="env-badge" title="目前執行環境偵測">
+          <span class="env-dot"></span>
+          <span id="envText">偵測環境中...</span>
+        </span>
+        <button id="openModeBtn" class="icon-toggle-btn" type="button" title="切換連結開啟方式（僅 LINE 內建環境作用）">
+          🔗 <span id="openModeText">外部瀏覽器</span>
+        </button>
+        <button id="themeToggleBtn" class="icon-toggle-btn" type="button" title="切換深色／淺色外觀">
+          🌓 <span id="themeText">深色模式</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 搜尋與分類快速切換工具列 -->
+  <nav class="sticky-toolbar" aria-label="搜尋與分類篩選">
+    <div class="container toolbar-inner">
+      <div class="search-row">
+        <div class="search-box">
+          <span class="search-icon" aria-hidden="true">🔍</span>
+          <input
+            id="searchInput"
+            class="search-input"
+            type="search"
+            placeholder="搜尋服務（例如：颱風、雨量、潮汐、空品、停班）"
+            autocomplete="off"
+            aria-label="搜尋氣象與防災服務"
+          />
+          <button id="clearSearchBtn" class="clear-search-btn" type="button" aria-label="清除搜尋">✕</button>
+        </div>
+        <span id="countSummary" class="count-summary">共 48 項服務</span>
+      </div>
+
+      <div id="categoryTabs" class="category-tabs" role="tablist" aria-label="功能分類">
+        <button class="tab-pill active" type="button" data-cat="all" role="tab" aria-selected="true">📌 全部項目</button>
+        <button class="tab-pill" type="button" data-cat="forecast" role="tab" aria-selected="false">🌤️ 天氣預報</button>
+        <button class="tab-pill" type="button" data-cat="observation" role="tab" aria-selected="false">🛰️ 即時觀測</button>
+        <button class="tab-pill" type="button" data-cat="warning" role="tab" aria-selected="false">🌀 颱風警特報</button>
+        <button class="tab-pill" type="button" data-cat="marine" role="tab" aria-selected="false">🌊 海象與潮汐</button>
+        <button class="tab-pill" type="button" data-cat="env" role="tab" aria-selected="false">🚨 空品水利防災</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- 主要內容區 -->
+  <main class="container main-content">
+    <!-- 我的常用捷徑區（支援自行星號收藏） -->
+    <section id="favoritesPanel" class="favorites-panel hidden" aria-label="我的常用捷徑">
+      <div class="section-head">
+        <div class="section-title-wrap">
+          <span class="section-num">★</span>
+          <h2 class="section-title">我的常用捷徑</h2>
+        </div>
+        <span class="section-tag">本機快速釘選</span>
+      </div>
+      <div id="favoritesGrid" class="cards-grid"></div>
+    </section>
+
+    <!-- 20 大主分類動態渲染容器 -->
+    <div id="sectionsContainer"></div>
+
+    <!-- 無搜尋結果提示 -->
+    <div id="emptyState" class="empty-state">
+      <div>找不到符合「<strong id="emptyKeyword"></strong>」的氣象防災項目</div>
+      <button id="resetFilterBtn" type="button">顯示全部項目</button>
+    </div>
+  </main>
+
+  <footer class="container page-footer">
+    <div class="footer-maker">製作者：<span id="makerBrand">氣象報報</span>、SimonMa</div>
+    <div class="footer-sources">
+      資料連結來源：交通部中央氣象署（CWA）、NCDR 國家災害防救科技中心、環境部、海洋委員會、交通部公路局、行政院人事行政總處｜支援電腦、筆電、平板、手機與 LINE LIFF
+    </div>
+    <div class="footer-care"><span id="careBrand">氣象報報</span> 關心您！ 天氣多變化，外出請隨時留意最新氣象與防災資訊</div>
+  </footer>
+
+  <!-- 縣市與鄉鎮選擇彈窗 -->
+  <div id="pickerBackdrop" class="picker-backdrop" role="dialog" aria-modal="true" aria-labelledby="pickerTitle">
+    <div class="picker-modal">
+      <div class="picker-header">
+        <div class="picker-header-top">
+          <div class="picker-header-left">
+            <button id="pickerBackBtn" class="picker-back-btn hidden" type="button">← 重選縣市</button>
+            <h2 id="pickerTitle" class="picker-title">選擇地區</h2>
+          </div>
+          <button id="pickerCloseBtn" class="picker-close-btn" type="button" aria-label="關閉選單">✕</button>
+        </div>
+        <div class="picker-subnote-row">
+          <span id="pickerSubnote">請選擇欲查詢之行政區</span>
+          <a id="pickerOverviewLink" class="picker-overview-link" href="https://www.cwa.gov.tw/V8/C/W/County/index.html" target="_blank" rel="noopener noreferrer">前往全臺總覽 ↗</a>
+        </div>
+        <div class="picker-search-wrap">
+          <span class="search-icon" aria-hidden="true">🔍</span>
+          <input
+            id="pickerSearchInput"
+            class="picker-search-input"
+            type="search"
+            placeholder="輸入關鍵字篩選（支援 台北 / 臺北）"
+            autocomplete="off"
+            aria-label="篩選縣市或鄉鎮"
+          />
+          <button id="pickerClearBtn" class="clear-search-btn" type="button" aria-label="清除篩選">✕</button>
+        </div>
+      </div>
+      <div id="pickerBody" class="picker-body"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    // ==================== 1. LIFF 與使用者設定初始化 ====================
+    // 若部署於 LINE LIFF，請將下方 LIFF_ID 替換為實際之 LINE Developers LIFF ID
+    const LIFF_ID = "填入你的_LIFF_ID";
+
+    const state = {
+      activeCategory: "all",
+      keyword: "",
+      isInLineClient: false,
+      liffReady: false,
+      externalOpenInLine: true, // LINE 內開啟網頁時預設使用外部瀏覽器，避免部分政府圖資互動受限
+      favorites: loadFavorites(),
+      pickerMode: null, // "county" | "town" | null
+      pickerSelectedCounty: null,
+      pickerKeyword: ""
+    };
+
+    /**
+     * 中央氣象署官方 22 縣市與 368 鄉鎮市區代碼（對齊 Info_County.js 與 Info_Town.js）
+     */
+    const CWA_AREA_NAMES = {
+      N: "北部地區",
+      C: "中部地區",
+      S: "南部地區",
+      E: "東部地區",
+      I: "離島地區"
+    };
+
+    const CWA_GEO = {"counties":[{"id":"10017","area":"N","name":"基隆市"},{"id":"63","area":"N","name":"臺北市"},{"id":"65","area":"N","name":"新北市"},{"id":"68","area":"N","name":"桃園市"},{"id":"10018","area":"N","name":"新竹市"},{"id":"10004","area":"N","name":"新竹縣"},{"id":"10005","area":"N","name":"苗栗縣"},{"id":"66","area":"C","name":"臺中市"},{"id":"10007","area":"C","name":"彰化縣"},{"id":"10008","area":"C","name":"南投縣"},{"id":"10009","area":"C","name":"雲林縣"},{"id":"10020","area":"C","name":"嘉義市"},{"id":"10010","area":"C","name":"嘉義縣"},{"id":"67","area":"S","name":"臺南市"},{"id":"64","area":"S","name":"高雄市"},{"id":"10013","area":"S","name":"屏東縣"},{"id":"10002","area":"E","name":"宜蘭縣"},{"id":"10015","area":"E","name":"花蓮縣"},{"id":"10014","area":"E","name":"臺東縣"},{"id":"10016","area":"I","name":"澎湖縣"},{"id":"09020","area":"I","name":"金門縣"},{"id":"09007","area":"I","name":"連江縣"}],"towns":{"10017":[{"id":"1001701","name":"中正區"},{"id":"1001702","name":"七堵區"},{"id":"1001703","name":"暖暖區"},{"id":"1001704","name":"仁愛區"},{"id":"1001705","name":"中山區"},{"id":"1001706","name":"安樂區"},{"id":"1001707","name":"信義區"}],"63":[{"id":"6300100","name":"松山區"},{"id":"6300200","name":"信義區"},{"id":"6300300","name":"大安區"},{"id":"6300400","name":"中山區"},{"id":"6300500","name":"中正區"},{"id":"6300600","name":"大同區"},{"id":"6300700","name":"萬華區"},{"id":"6300800","name":"文山區"},{"id":"6300900","name":"南港區"},{"id":"6301000","name":"內湖區"},{"id":"6301100","name":"士林區"},{"id":"6301200","name":"北投區"}],"65":[{"id":"6500100","name":"板橋區"},{"id":"6500200","name":"三重區"},{"id":"6500300","name":"中和區"},{"id":"6500400","name":"永和區"},{"id":"6500500","name":"新莊區"},{"id":"6500600","name":"新店區"},{"id":"6500700","name":"樹林區"},{"id":"6500800","name":"鶯歌區"},{"id":"6500900","name":"三峽區"},{"id":"6501000","name":"淡水區"},{"id":"6501100","name":"汐止區"},{"id":"6501200","name":"瑞芳區"},{"id":"6501300","name":"土城區"},{"id":"6501400","name":"蘆洲區"},{"id":"6501500","name":"五股區"},{"id":"6501600","name":"泰山區"},{"id":"6501700","name":"林口區"},{"id":"6501800","name":"深坑區"},{"id":"6501900","name":"石碇區"},{"id":"6502000","name":"坪林區"},{"id":"6502100","name":"三芝區"},{"id":"6502200","name":"石門區"},{"id":"6502300","name":"八里區"},{"id":"6502400","name":"平溪區"},{"id":"6502500","name":"雙溪區"},{"id":"6502600","name":"貢寮區"},{"id":"6502700","name":"金山區"},{"id":"6502800","name":"萬里區"},{"id":"6502900","name":"烏來區"}],"68":[{"id":"6800100","name":"桃園區"},{"id":"6800200","name":"中壢區"},{"id":"6800300","name":"大溪區"},{"id":"6800400","name":"楊梅區"},{"id":"6800500","name":"蘆竹區"},{"id":"6800600","name":"大園區"},{"id":"6800700","name":"龜山區"},{"id":"6800800","name":"八德區"},{"id":"6800900","name":"龍潭區"},{"id":"6801000","name":"平鎮區"},{"id":"6801100","name":"新屋區"},{"id":"6801200","name":"觀音區"},{"id":"6801300","name":"復興區"}],"10018":[{"id":"1001801","name":"東區"},{"id":"1001802","name":"北區"},{"id":"1001803","name":"香山區"}],"10004":[{"id":"1000401","name":"竹北市"},{"id":"1000402","name":"竹東鎮"},{"id":"1000403","name":"新埔鎮"},{"id":"1000404","name":"關西鎮"},{"id":"1000405","name":"湖口鄉"},{"id":"1000406","name":"新豐鄉"},{"id":"1000407","name":"芎林鄉"},{"id":"1000408","name":"橫山鄉"},{"id":"1000409","name":"北埔鄉"},{"id":"1000410","name":"寶山鄉"},{"id":"1000411","name":"峨眉鄉"},{"id":"1000412","name":"尖石鄉"},{"id":"1000413","name":"五峰鄉"}],"10005":[{"id":"1000501","name":"苗栗市"},{"id":"1000502","name":"苑裡鎮"},{"id":"1000503","name":"通霄鎮"},{"id":"1000504","name":"竹南鎮"},{"id":"1000505","name":"頭份市"},{"id":"1000506","name":"後龍鎮"},{"id":"1000507","name":"卓蘭鎮"},{"id":"1000508","name":"大湖鄉"},{"id":"1000509","name":"公館鄉"},{"id":"1000510","name":"銅鑼鄉"},{"id":"1000511","name":"南庄鄉"},{"id":"1000512","name":"頭屋鄉"},{"id":"1000513","name":"三義鄉"},{"id":"1000514","name":"西湖鄉"},{"id":"1000515","name":"造橋鄉"},{"id":"1000516","name":"三灣鄉"},{"id":"1000517","name":"獅潭鄉"},{"id":"1000518","name":"泰安鄉"}],"66":[{"id":"6600100","name":"中區"},{"id":"6600200","name":"東區"},{"id":"6600300","name":"南區"},{"id":"6600400","name":"西區"},{"id":"6600500","name":"北區"},{"id":"6600600","name":"西屯區"},{"id":"6600700","name":"南屯區"},{"id":"6600800","name":"北屯區"},{"id":"6600900","name":"豐原區"},{"id":"6601000","name":"東勢區"},{"id":"6601100","name":"大甲區"},{"id":"6601200","name":"清水區"},{"id":"6601300","name":"沙鹿區"},{"id":"6601400","name":"梧棲區"},{"id":"6601500","name":"后里區"},{"id":"6601600","name":"神岡區"},{"id":"6601700","name":"潭子區"},{"id":"6601800","name":"大雅區"},{"id":"6601900","name":"新社區"},{"id":"6602000","name":"石岡區"},{"id":"6602100","name":"外埔區"},{"id":"6602200","name":"大安區"},{"id":"6602300","name":"烏日區"},{"id":"6602400","name":"大肚區"},{"id":"6602500","name":"龍井區"},{"id":"6602600","name":"霧峰區"},{"id":"6602700","name":"太平區"},{"id":"6602800","name":"大里區"},{"id":"6602900","name":"和平區"}],"10007":[{"id":"1000701","name":"彰化市"},{"id":"1000702","name":"鹿港鎮"},{"id":"1000703","name":"和美鎮"},{"id":"1000704","name":"線西鄉"},{"id":"1000705","name":"伸港鄉"},{"id":"1000706","name":"福興鄉"},{"id":"1000707","name":"秀水鄉"},{"id":"1000708","name":"花壇鄉"},{"id":"1000709","name":"芬園鄉"},{"id":"1000710","name":"員林市"},{"id":"1000711","name":"溪湖鎮"},{"id":"1000712","name":"田中鎮"},{"id":"1000713","name":"大村鄉"},{"id":"1000714","name":"埔鹽鄉"},{"id":"1000715","name":"埔心鄉"},{"id":"1000716","name":"永靖鄉"},{"id":"1000717","name":"社頭鄉"},{"id":"1000718","name":"二水鄉"},{"id":"1000719","name":"北斗鎮"},{"id":"1000720","name":"二林鎮"},{"id":"1000721","name":"田尾鄉"},{"id":"1000722","name":"埤頭鄉"},{"id":"1000723","name":"芳苑鄉"},{"id":"1000724","name":"大城鄉"},{"id":"1000725","name":"竹塘鄉"},{"id":"1000726","name":"溪州鄉"}],"10008":[{"id":"1000801","name":"南投市"},{"id":"1000802","name":"埔里鎮"},{"id":"1000803","name":"草屯鎮"},{"id":"1000804","name":"竹山鎮"},{"id":"1000805","name":"集集鎮"},{"id":"1000806","name":"名間鄉"},{"id":"1000807","name":"鹿谷鄉"},{"id":"1000808","name":"中寮鄉"},{"id":"1000809","name":"魚池鄉"},{"id":"1000810","name":"國姓鄉"},{"id":"1000811","name":"水里鄉"},{"id":"1000812","name":"信義鄉"},{"id":"1000813","name":"仁愛鄉"}],"10009":[{"id":"1000901","name":"斗六市"},{"id":"1000902","name":"斗南鎮"},{"id":"1000903","name":"虎尾鎮"},{"id":"1000904","name":"西螺鎮"},{"id":"1000905","name":"土庫鎮"},{"id":"1000906","name":"北港鎮"},{"id":"1000907","name":"古坑鄉"},{"id":"1000908","name":"大埤鄉"},{"id":"1000909","name":"莿桐鄉"},{"id":"1000910","name":"林內鄉"},{"id":"1000911","name":"二崙鄉"},{"id":"1000912","name":"崙背鄉"},{"id":"1000913","name":"麥寮鄉"},{"id":"1000914","name":"東勢鄉"},{"id":"1000915","name":"褒忠鄉"},{"id":"1000916","name":"臺西鄉"},{"id":"1000917","name":"元長鄉"},{"id":"1000918","name":"四湖鄉"},{"id":"1000919","name":"口湖鄉"},{"id":"1000920","name":"水林鄉"}],"10020":[{"id":"1002001","name":"東區"},{"id":"1002002","name":"西區"}],"10010":[{"id":"1001001","name":"太保市"},{"id":"1001002","name":"朴子市"},{"id":"1001003","name":"布袋鎮"},{"id":"1001004","name":"大林鎮"},{"id":"1001005","name":"民雄鄉"},{"id":"1001006","name":"溪口鄉"},{"id":"1001007","name":"新港鄉"},{"id":"1001008","name":"六腳鄉"},{"id":"1001009","name":"東石鄉"},{"id":"1001010","name":"義竹鄉"},{"id":"1001011","name":"鹿草鄉"},{"id":"1001012","name":"水上鄉"},{"id":"1001013","name":"中埔鄉"},{"id":"1001014","name":"竹崎鄉"},{"id":"1001015","name":"梅山鄉"},{"id":"1001016","name":"番路鄉"},{"id":"1001017","name":"大埔鄉"},{"id":"1001018","name":"阿里山鄉"}],"67":[{"id":"6700100","name":"新營區"},{"id":"6700200","name":"鹽水區"},{"id":"6700300","name":"白河區"},{"id":"6700400","name":"柳營區"},{"id":"6700500","name":"後壁區"},{"id":"6700600","name":"東山區"},{"id":"6700700","name":"麻豆區"},{"id":"6700800","name":"下營區"},{"id":"6700900","name":"六甲區"},{"id":"6701000","name":"官田區"},{"id":"6701100","name":"大內區"},{"id":"6701200","name":"佳里區"},{"id":"6701300","name":"學甲區"},{"id":"6701400","name":"西港區"},{"id":"6701500","name":"七股區"},{"id":"6701600","name":"將軍區"},{"id":"6701700","name":"北門區"},{"id":"6701800","name":"新化區"},{"id":"6701900","name":"善化區"},{"id":"6702000","name":"新市區"},{"id":"6702100","name":"安定區"},{"id":"6702200","name":"山上區"},{"id":"6702300","name":"玉井區"},{"id":"6702400","name":"楠西區"},{"id":"6702500","name":"南化區"},{"id":"6702600","name":"左鎮區"},{"id":"6702700","name":"仁德區"},{"id":"6702800","name":"歸仁區"},{"id":"6702900","name":"關廟區"},{"id":"6703000","name":"龍崎區"},{"id":"6703100","name":"永康區"},{"id":"6703200","name":"東區"},{"id":"6703300","name":"南區"},{"id":"6703400","name":"北區"},{"id":"6703500","name":"安南區"},{"id":"6703600","name":"安平區"},{"id":"6703700","name":"中西區"}],"64":[{"id":"6400100","name":"鹽埕區"},{"id":"6400200","name":"鼓山區"},{"id":"6400300","name":"左營區"},{"id":"6400400","name":"楠梓區"},{"id":"6400500","name":"三民區"},{"id":"6400600","name":"新興區"},{"id":"6400700","name":"前金區"},{"id":"6400800","name":"苓雅區"},{"id":"6400900","name":"前鎮區"},{"id":"6401000","name":"旗津區"},{"id":"6401100","name":"小港區"},{"id":"6401200","name":"鳳山區"},{"id":"6401300","name":"林園區"},{"id":"6401400","name":"大寮區"},{"id":"6401500","name":"大樹區"},{"id":"6401600","name":"大社區"},{"id":"6401700","name":"仁武區"},{"id":"6401800","name":"鳥松區"},{"id":"6401900","name":"岡山區"},{"id":"6402000","name":"橋頭區"},{"id":"6402100","name":"燕巢區"},{"id":"6402200","name":"田寮區"},{"id":"6402300","name":"阿蓮區"},{"id":"6402400","name":"路竹區"},{"id":"6402500","name":"湖內區"},{"id":"6402600","name":"茄萣區"},{"id":"6402700","name":"永安區"},{"id":"6402800","name":"彌陀區"},{"id":"6402900","name":"梓官區"},{"id":"6403000","name":"旗山區"},{"id":"6403100","name":"美濃區"},{"id":"6403200","name":"六龜區"},{"id":"6403300","name":"甲仙區"},{"id":"6403400","name":"杉林區"},{"id":"6403500","name":"內門區"},{"id":"6403600","name":"茂林區"},{"id":"6403700","name":"桃源區"},{"id":"6403800","name":"那瑪夏區"}],"10013":[{"id":"1001301","name":"屏東市"},{"id":"1001302","name":"潮州鎮"},{"id":"1001303","name":"東港鎮"},{"id":"1001304","name":"恆春鎮"},{"id":"1001305","name":"萬丹鄉"},{"id":"1001306","name":"長治鄉"},{"id":"1001307","name":"麟洛鄉"},{"id":"1001308","name":"九如鄉"},{"id":"1001309","name":"里港鄉"},{"id":"1001310","name":"鹽埔鄉"},{"id":"1001311","name":"高樹鄉"},{"id":"1001312","name":"萬巒鄉"},{"id":"1001313","name":"內埔鄉"},{"id":"1001314","name":"竹田鄉"},{"id":"1001315","name":"新埤鄉"},{"id":"1001316","name":"枋寮鄉"},{"id":"1001317","name":"新園鄉"},{"id":"1001318","name":"崁頂鄉"},{"id":"1001319","name":"林邊鄉"},{"id":"1001320","name":"南州鄉"},{"id":"1001321","name":"佳冬鄉"},{"id":"1001322","name":"琉球鄉"},{"id":"1001323","name":"車城鄉"},{"id":"1001324","name":"滿州鄉"},{"id":"1001325","name":"枋山鄉"},{"id":"1001326","name":"三地門鄉"},{"id":"1001327","name":"霧臺鄉"},{"id":"1001328","name":"瑪家鄉"},{"id":"1001329","name":"泰武鄉"},{"id":"1001330","name":"來義鄉"},{"id":"1001331","name":"春日鄉"},{"id":"1001332","name":"獅子鄉"},{"id":"1001333","name":"牡丹鄉"}],"10002":[{"id":"1000201","name":"宜蘭市"},{"id":"1000202","name":"羅東鎮"},{"id":"1000203","name":"蘇澳鎮"},{"id":"1000204","name":"頭城鎮"},{"id":"1000205","name":"礁溪鄉"},{"id":"1000206","name":"壯圍鄉"},{"id":"1000207","name":"員山鄉"},{"id":"1000208","name":"冬山鄉"},{"id":"1000209","name":"五結鄉"},{"id":"1000210","name":"三星鄉"},{"id":"1000211","name":"大同鄉"},{"id":"1000212","name":"南澳鄉"}],"10015":[{"id":"1001501","name":"花蓮市"},{"id":"1001502","name":"鳳林鎮"},{"id":"1001503","name":"玉里鎮"},{"id":"1001504","name":"新城鄉"},{"id":"1001505","name":"吉安鄉"},{"id":"1001506","name":"壽豐鄉"},{"id":"1001507","name":"光復鄉"},{"id":"1001508","name":"豐濱鄉"},{"id":"1001509","name":"瑞穗鄉"},{"id":"1001510","name":"富里鄉"},{"id":"1001511","name":"秀林鄉"},{"id":"1001512","name":"萬榮鄉"},{"id":"1001513","name":"卓溪鄉"}],"10014":[{"id":"1001401","name":"臺東市"},{"id":"1001402","name":"成功鎮"},{"id":"1001403","name":"關山鎮"},{"id":"1001404","name":"卑南鄉"},{"id":"1001405","name":"鹿野鄉"},{"id":"1001406","name":"池上鄉"},{"id":"1001407","name":"東河鄉"},{"id":"1001408","name":"長濱鄉"},{"id":"1001409","name":"太麻里鄉"},{"id":"1001410","name":"大武鄉"},{"id":"1001411","name":"綠島鄉"},{"id":"1001412","name":"海端鄉"},{"id":"1001413","name":"延平鄉"},{"id":"1001414","name":"金峰鄉"},{"id":"1001415","name":"達仁鄉"},{"id":"1001416","name":"蘭嶼鄉"}],"10016":[{"id":"1001601","name":"馬公市"},{"id":"1001602","name":"湖西鄉"},{"id":"1001603","name":"白沙鄉"},{"id":"1001604","name":"西嶼鄉"},{"id":"1001605","name":"望安鄉"},{"id":"1001606","name":"七美鄉"}],"09020":[{"id":"0902001","name":"金城鎮"},{"id":"0902002","name":"金沙鎮"},{"id":"0902003","name":"金湖鎮"},{"id":"0902004","name":"金寧鄉"},{"id":"0902005","name":"烈嶼鄉"},{"id":"0902006","name":"烏坵鄉"}],"09007":[{"id":"0900701","name":"南竿鄉"},{"id":"0900702","name":"北竿鄉"},{"id":"0900703","name":"莒光鄉"},{"id":"0900704","name":"東引鄉"}]}};
+
+    /**
+     * 完整 20 大類、48 項即時氣象海象與防災服務定義（嚴格對應「網站按鈕.txt」架構）
+     */
+    const MENU_SECTIONS = [
+      {
+        num: "01",
+        title: "縣市鄉鎮天氣預報",
+        category: "forecast",
+        categoryLabel: "天氣預報",
+        items: [
+          {
+            id: "cwa-county",
+            name: "縣市天氣預報",
+            icon: "🏙️",
+            desc: "點選展開各縣市選單，直達 36 小時與一週預報",
+            url: "https://www.cwa.gov.tw/V8/C/W/County/index.html",
+            action: "county-picker",
+            keywords: "縣市 天氣 預報 溫度 降雨機率"
+          },
+          {
+            id: "cwa-town",
+            name: "鄉鎮天氣預報",
+            icon: "🏘️",
+            desc: "先選縣市再選鄉鎮，直達逐 3 小時精緻預報",
+            url: "https://www.cwa.gov.tw/V8/C/W/Town/index.html",
+            action: "town-picker",
+            keywords: "鄉鎮 天氣 預報 逐3小時 體感"
+          }
+        ]
+      },
+      {
+        num: "02",
+        title: "地震資訊",
+        category: "env",
+        categoryLabel: "防災應變",
+        items: [
+          {
+            id: "cwa-eq",
+            name: "地震報告",
+            icon: "🌏",
+            desc: "中央氣象署最新顯著有感與小區域地震",
+            url: "https://www.cwa.gov.tw/V8/C/E/index.html",
+            tone: "warn",
+            keywords: "地震 震度 震央 海嘯"
+          }
+        ]
+      },
+      {
+        num: "03",
+        title: "衛星雲圖",
+        category: "observation",
+        categoryLabel: "即時觀測",
+        items: [
+          {
+            id: "cwa-sat",
+            name: "衛星雲圖",
+            icon: "🛰️",
+            desc: "紅外線、色調強化、真實色與可見光雲圖",
+            url: "https://www.cwa.gov.tw/V8/C/W/OBS_Sat.html",
+            keywords: "衛星 雲圖 向日葵 紅外線 可見光"
+          }
+        ]
+      },
+      {
+        num: "04",
+        title: "雷達回波",
+        category: "observation",
+        categoryLabel: "即時觀測",
+        items: [
+          {
+            id: "cwa-radar",
+            name: "雷達回波",
+            icon: "📡",
+            desc: "全臺高解析度降雨對流雷達合成回波圖",
+            url: "https://www.cwa.gov.tw/V8/C/W/OBS_Radar.html",
+            keywords: "雷達 回波 對流 雨帶 降雨"
+          }
+        ]
+      },
+      {
+        num: "05",
+        title: "閃電觀測",
+        category: "observation",
+        categoryLabel: "即時觀測",
+        items: [
+          {
+            id: "cwa-lightning",
+            name: "閃電即時觀測",
+            icon: "⚡",
+            desc: "全臺雲間與對地閃電落雷位置分布",
+            url: "https://www.cwa.gov.tw/V8/C/W/OBS_Lightning.html",
+            tone: "warn",
+            keywords: "閃電 落雷 雷擊 雷雨"
+          }
+        ]
+      },
+      {
+        num: "06",
+        title: "降水預報",
+        category: "forecast",
+        categoryLabel: "天氣預報",
+        items: [
+          {
+            id: "cwa-qpf",
+            name: "定量降水預報",
+            icon: "🌧️",
+            desc: "CWA 未來 12／24 小時累積雨量預報圖",
+            url: "https://www.cwa.gov.tw/V8/C/P/QPF.html",
+            keywords: "定量降水 降雨預報 QPF 雨量"
+          },
+          {
+            id: "ncdr-qpf",
+            name: "QPF整合定量降雨預報",
+            icon: "🗺️",
+            desc: "NCDR 災害防救科技中心整合降雨預報",
+            url: "https://watch.ncdr.nat.gov.tw/watch_rain_mms",
+            keywords: "QPF 整合 定量降雨 NCDR"
+          }
+        ]
+      },
+      {
+        num: "07",
+        title: "颱風資訊",
+        category: "warning",
+        categoryLabel: "颱風警特報",
+        items: [
+          {
+            id: "ty-news",
+            name: "颱風消息",
+            icon: "🌀",
+            desc: "西北太平洋最新熱帶氣旋與颱風動態消息",
+            url: "https://www.cwa.gov.tw/V8/C/P/Typhoon/TY_NEWS.html",
+            tone: "typhoon",
+            keywords: "颱風 消息 動態 路徑"
+          },
+          {
+            id: "ty-warn",
+            name: "颱風警報",
+            icon: "🚨",
+            desc: "海上及陸上颱風警報單與暴風圈預估",
+            url: "https://www.cwa.gov.tw/V8/C/P/Typhoon/TY_WARN.html",
+            tone: "warn",
+            keywords: "颱風 警報 海警 陸警 暴風圈"
+          },
+          {
+            id: "td-warn",
+            name: "熱帶低壓特報",
+            icon: "🌪️",
+            desc: "熱帶性低氣壓特報與影響海域警示",
+            url: "https://www.cwa.gov.tw/V8/C/P/Warning/W23.html",
+            tone: "typhoon",
+            keywords: "熱帶性低氣壓 熱帶低壓 特報"
+          },
+          {
+            id: "ncdr-typhoon",
+            name: "颱風路徑",
+            icon: "🧭",
+            desc: "NCDR 颱風多模式系集路徑與風雨圖台",
+            url: "https://watch.ncdr.nat.gov.tw/watch_page_typhoon_v2",
+            tone: "typhoon",
+            keywords: "颱風 路徑 系集 NCDR"
+          }
+        ]
+      },
+      {
+        num: "08",
+        title: "天氣警特報",
+        category: "warning",
+        categoryLabel: "警特報",
+        items: [
+          {
+            id: "warn-heavyrain",
+            name: "大規模劇烈豪雨",
+            icon: "⛈️",
+            desc: "大規模或劇烈豪雨作業即時警戒資訊",
+            url: "https://www.cwa.gov.tw/V8/C/P/Warning/W24.html",
+            tone: "warn",
+            keywords: "豪雨 大規模 劇烈豪雨 特報"
+          },
+          {
+            id: "warn-thunder",
+            name: "大雷雨即時訊息",
+            icon: "🌩️",
+            desc: "大雷雨即時訊息與警特報區域涵蓋",
+            url: "https://www.cwa.gov.tw/V8/C/P/Warning/W33.html",
+            tone: "warn",
+            keywords: "大雷雨 即時訊息 強對流"
+          },
+          {
+            id: "warn-realtime",
+            name: "即時天氣資訊",
+            icon: "📢",
+            desc: "CWA 即時天氣訊息與局部短時強降雨",
+            url: "https://www.cwa.gov.tw/V8/C/P/Warning/W34.html",
+            tone: "typhoon",
+            keywords: "即時天氣 訊息 強風 冰雹"
+          },
+          {
+            id: "warn-heat",
+            name: "高溫資訊",
+            icon: "🥵",
+            desc: "各縣市高溫黃／橙／紅燈號預警",
+            url: "https://www.cwa.gov.tw/V8/C/P/Warning/W29.html",
+            tone: "typhoon",
+            keywords: "高溫 資訊 炎熱 36度 燈號"
+          },
+          {
+            id: "warn-wind",
+            name: "陸上強風特報",
+            icon: "💨",
+            desc: "全臺各縣市與離島陸上強陣風燈號特報",
+            url: "https://www.cwa.gov.tw/V8/C/P/Warning/W25.html",
+            tone: "typhoon",
+            keywords: "陸上強風 強風特報 陣風"
+          },
+          {
+            id: "warn-swell",
+            name: "長浪即時訊息",
+            icon: "🌊",
+            desc: "各沿海測站長浪實測浪高與警示訊息",
+            url: "https://www.cwa.gov.tw/V8/C/P/Warning/W37.html",
+            tone: "ocean",
+            keywords: "長浪 即時訊息 瘋狗浪 海邊"
+          },
+          {
+            id: "warn-largesurf",
+            name: "巨浪告警",
+            icon: "⚠️",
+            desc: "近岸劇烈巨浪告警與海象安全提醒",
+            url: "https://www.cwa.gov.tw/V8/C/P/Warning/LargeSurf.html",
+            tone: "warn",
+            keywords: "巨浪 告警 大浪 沿海"
+          },
+          {
+            id: "warn-waves",
+            name: "浪高潮位監測",
+            icon: "📈",
+            desc: "全臺浮標浪高與驗潮站潮位即時監測",
+            url: "https://www.cwa.gov.tw/V8/C/P/watch_waves.html",
+            tone: "ocean",
+            keywords: "浪高 潮位 監測 浪高潮為監測 浮標"
+          },
+          {
+            id: "warn-surge",
+            name: "暴潮預報",
+            icon: "🌀",
+            desc: "颱風或低氣壓引致之沿海暴潮水位預報",
+            url: "https://www.cwa.gov.tw/V8/C/P/surge.html",
+            tone: "ocean",
+            keywords: "暴潮 預報 滿潮 溢淹"
+          }
+        ]
+      },
+      {
+        num: "09",
+        title: "雨量觀測",
+        category: "observation",
+        categoryLabel: "即時觀測",
+        items: [
+          {
+            id: "rain-day",
+            name: "日累積雨量",
+            icon: "☔",
+            desc: "今日 00 時起至目前累積雨量分布圖",
+            url: "https://www.cwa.gov.tw/V8/C/P/Rainfall/Rainfall_QZJ.html",
+            keywords: "日累積雨量 今日雨量 測站"
+          },
+          {
+            id: "rain-hour",
+            name: "時累積雨量",
+            icon: "💧",
+            desc: "最近 1 小時實測雨量分布與強降雨熱區",
+            url: "https://www.cwa.gov.tw/V8/C/P/Rainfall/Rainfall_QZT.html",
+            keywords: "時累積雨量 時雨量 1小時"
+          },
+          {
+            id: "rain-area",
+            name: "區域雨量",
+            icon: "🗾",
+            desc: "分區即時累積雨量排行與觀測清單",
+            url: "https://www.cwa.gov.tw/V8/C/P/Rainfall/Rainfall_Area.html",
+            keywords: "區域雨量 分區 雨量排行"
+          },
+          {
+            id: "rain-town",
+            name: "鄉鎮雨量分布",
+            icon: "📍",
+            desc: "鄉鎮尺度雨量空間分級著色圖",
+            url: "https://www.cwa.gov.tw/V8/C/P/Rainfall/Rainfall_Town.html",
+            keywords: "鄉鎮雨量 分布圖"
+          },
+          {
+            id: "rain-10min",
+            name: "10分鐘雨量",
+            icon: "⏱️",
+            desc: "各縣市每 10 分鐘短延時降雨即時數據",
+            url: "https://www.cwa.gov.tw/V8/C/P/Rainfall/Rainfall_10Min_County.html",
+            keywords: "10分鐘雨量 短延時 即時雨量"
+          }
+        ]
+      },
+      {
+        num: "10",
+        title: "劇烈天氣監測",
+        category: "warning",
+        categoryLabel: "劇烈監測",
+        items: [
+          {
+            id: "cwa-qpeplus",
+            name: "劇烈天氣監測系統 (QPESUMS)",
+            icon: "🎯",
+            desc: "整合雷達、定量降雨估計與外推預報圖台",
+            url: "https://qpeplus.cwa.gov.tw/pub/",
+            tone: "warn",
+            keywords: "劇烈天氣 監測 QPEPLUS QPESUMS 雷達"
+          }
+        ]
+      },
+      {
+        num: "11",
+        title: "風速觀測",
+        category: "observation",
+        categoryLabel: "即時觀測",
+        items: [
+          {
+            id: "wind-all",
+            name: "縣市風速",
+            icon: "🌬️",
+            desc: "全臺各縣市平均風與陣風即時數據",
+            url: "https://www.cwa.gov.tw/V8/C/W/WindSpeed/WindSpeed_All.html",
+            keywords: "縣市 風速 平均風 陣風"
+          },
+          {
+            id: "wind-img",
+            name: "風力觀測圖",
+            icon: "🚩",
+            desc: "全臺即時風力分布圖與陣風級數色階",
+            url: "https://www.cwa.gov.tw/V8/C/W/WindSpeed/WindSpeed_Img.html",
+            keywords: "風力 觀測圖 風場"
+          },
+          {
+            id: "wind-top",
+            name: "縣市風力極值",
+            icon: "📊",
+            desc: "當日各縣市測站最大陣風排行極值",
+            url: "https://www.cwa.gov.tw/V8/C/W/County_WindTop.html",
+            keywords: "風力極值 最大陣風 排行"
+          }
+        ]
+      },
+      {
+        num: "12",
+        title: "紫外線觀測",
+        category: "observation",
+        categoryLabel: "即時觀測",
+        items: [
+          {
+            id: "cwa-uvi",
+            name: "紫外線觀測",
+            icon: "☀️",
+            desc: "各測站即時紫外線指數 (UVI) 與防護建議",
+            url: "https://www.cwa.gov.tw/V8/C/W/OBS_UVI.html",
+            tone: "typhoon",
+            keywords: "紫外線 UVI 防曬 陽光"
+          }
+        ]
+      },
+      {
+        num: "13",
+        title: "海象預報與實況",
+        category: "marine",
+        categoryLabel: "海象",
+        items: [
+          {
+            id: "marine-coastal",
+            name: "鄉鎮沿海",
+            icon: "🏖️",
+            desc: "全臺沿海鄉鎮海象風浪與天氣預報",
+            url: "https://www.cwa.gov.tw/V8/C/M/TownCoastal/TownCoastal_Map.html",
+            tone: "ocean",
+            keywords: "鄉鎮沿海 海岸 海象"
+          },
+          {
+            id: "marine-obs",
+            name: "即時海況",
+            icon: "⚓",
+            desc: "資料浮標、潮位站實測波高、週期與海溫",
+            url: "https://www.cwa.gov.tw/V8/C/M/OBS_Marine.html",
+            tone: "ocean",
+            keywords: "即時海況 浮標 海溫 波高"
+          },
+          {
+            id: "marine-nsea",
+            name: "近海漁業",
+            icon: "🚤",
+            desc: "臺灣近海各海域三天風力、浪高與天氣預報",
+            url: "https://www.cwa.gov.tw/V8/C/M/NSea.html",
+            tone: "ocean",
+            keywords: "近海漁業 海面 風力 浪高"
+          },
+          {
+            id: "marine-fsea",
+            name: "遠海漁業",
+            icon: "🚢",
+            desc: "西太平洋與遠洋漁業海象天氣預報",
+            url: "https://www.cwa.gov.tw/V8/C/M/FSea.html",
+            tone: "ocean",
+            keywords: "遠海漁業 遠洋 航海"
+          },
+          {
+            id: "marine-blue",
+            name: "藍色公路",
+            icon: "⛴️",
+            desc: "離島客輪航線海象風浪預報查詢",
+            url: "https://www.cwa.gov.tw/V8/C/M/bluehighway_home.html",
+            tone: "ocean",
+            keywords: "藍色公路 離島 船班 澎湖 金門 馬祖"
+          },
+          {
+            id: "marine-wave",
+            name: "波浪分析預報圖",
+            icon: "〰️",
+            desc: "數值模式波高與波向空間分析預報圖",
+            url: "https://www.cwa.gov.tw/V8/C/M/wave.html",
+            tone: "ocean",
+            keywords: "波浪 分析 預報圖 浪高"
+          }
+        ]
+      },
+      {
+        num: "14",
+        title: "潮汐預報",
+        category: "marine",
+        categoryLabel: "潮汐",
+        items: [
+          {
+            id: "tide-forecast",
+            name: "潮汐預報",
+            icon: "🌕",
+            desc: "全臺各港口及沿岸滿潮、乾潮時刻與潮差",
+            url: "https://www.cwa.gov.tw/V8/C/M/tide.html",
+            tone: "ocean",
+            keywords: "潮汐 滿潮 乾潮 釣魚"
+          },
+          {
+            id: "tide-full",
+            name: "滿潮預報圖",
+            icon: "🌊",
+            desc: "沿岸各地滿潮時刻與水位趨勢預報圖",
+            url: "https://www.cwa.gov.tw/V8/C/M/tide_full.html",
+            tone: "ocean",
+            keywords: "滿潮 預報圖 大潮"
+          },
+          {
+            id: "tide-height",
+            name: "潮高預報圖",
+            icon: "📏",
+            desc: "各海域逐時天文潮高分布預報圖",
+            url: "https://www.cwa.gov.tw/V8/C/M/tide_height.html",
+            tone: "ocean",
+            keywords: "潮高 預報圖 水位"
+          }
+        ]
+      },
+      {
+        num: "15",
+        title: "海象資訊平台",
+        category: "marine",
+        categoryLabel: "海象",
+        items: [
+          {
+            id: "ocean-platform",
+            name: "CWA 海象資訊平台 V2",
+            icon: "🧭",
+            desc: "海流、海溫、波浪與海洋模式綜合圖台",
+            url: "https://ocean.cwa.gov.tw/V2/",
+            tone: "ocean",
+            keywords: "海象資訊平台 海流 海溫 模式"
+          }
+        ]
+      },
+      {
+        num: "16",
+        title: "空氣品質",
+        category: "env",
+        categoryLabel: "環境監測",
+        items: [
+          {
+            id: "aqi-now",
+            name: "即時空品",
+            icon: "🍃",
+            desc: "環境部空氣品質監測網即時 AQI 與 PM2.5",
+            url: "https://airtw.moenv.gov.tw/",
+            tone: "ocean",
+            keywords: "即時空品 環境部 AQI PM2.5 臭氧"
+          },
+          {
+            id: "aqi-forecast",
+            name: "四日空品區預報",
+            icon: "📅",
+            desc: "未來 4 日各空品區與離島空氣品質預報",
+            url: "https://airtw.moenv.gov.tw/CHT/Forecast/Forecast_3days.aspx",
+            tone: "ocean",
+            keywords: "四日空品區 預報 環境部 擴散條件"
+          },
+          {
+            id: "ncdr-aqi",
+            name: "空氣品質AQI預報",
+            icon: "🌫️",
+            desc: "NCDR 整合空氣品質指標視覺化圖台",
+            url: "https://watch.ncdr.nat.gov.tw/watch_page_aqi",
+            tone: "ocean",
+            keywords: "空氣品質 AQI 預報 NCDR"
+          }
+        ]
+      },
+      {
+        num: "17",
+        title: "水庫即時資訊",
+        category: "env",
+        categoryLabel: "水利水情",
+        items: [
+          {
+            id: "reservoir-now",
+            name: "水庫即時水情資訊",
+            icon: "💧",
+            desc: "全臺主要水庫蓄水率、有效蓄水量與進出水狀態",
+            url: "https://andy6804tw.github.io/taiwanreservoir/public/",
+            tone: "ocean",
+            keywords: "水庫 蓄水量 蓄水率 水情"
+          }
+        ]
+      },
+      {
+        num: "18",
+        title: "GoOcean 海洋遊憩海況",
+        category: "marine",
+        categoryLabel: "海域遊憩",
+        items: [
+          {
+            id: "go-ocean",
+            name: "GoOcean 海洋遊憩海況",
+            icon: "🏄",
+            desc: "海洋委員會遊憩海域風險燈號與海流風浪",
+            url: "https://goocean.namr.gov.tw/Home",
+            tone: "ocean",
+            keywords: "GoOcean 海洋遊憩 衝浪 潛水 風險燈號"
+          }
+        ]
+      },
+      {
+        num: "19",
+        title: "CCTV 即時影像",
+        category: "env",
+        categoryLabel: "交通防災",
+        items: [
+          {
+            id: "cctv-168",
+            name: "CCTV 即時路況影像",
+            icon: "📹",
+            desc: "交通部公路局即時路況與省道山區監視影像",
+            url: "https://168.thb.gov.tw/thb168",
+            tone: "disaster",
+            keywords: "CCTV 即時影像 路況 公路 監視器"
+          }
+        ]
+      },
+      {
+        num: "20",
+        title: "停止上班上課",
+        category: "env",
+        categoryLabel: "災害應變",
+        items: [
+          {
+            id: "dgpa-nds",
+            name: "停止上班及上課資訊",
+            icon: "🏫",
+            desc: "行政院人事行政總處天然災害停班停課公告",
+            url: "https://www.dgpa.gov.tw/typh/daily/nds.html",
+            tone: "warn",
+            keywords: "停止上班上課 停班停課 颱風假 天然災害"
+          }
+        ]
+      }
+    ];
+
+    // ==================== 2. 工具函式 ====================
+    function loadFavorites() {
+      try {
+        const raw = localStorage.getItem("weather_liff_favorites_v1");
+        return raw ? JSON.parse(raw) : [];
+      } catch (err) {
+        return [];
+      }
+    }
+
+    function saveFavorites() {
+      try {
+        localStorage.setItem("weather_liff_favorites_v1", JSON.stringify(state.favorites));
+      } catch (err) {
+        // 忽略無痕模式儲存限制
+      }
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(showToast._timer);
+      showToast._timer = setTimeout(() => {
+        toast.classList.remove("show");
+      }, 2200);
+    }
+
+    function getAllItemsMap() {
+      const map = new Map();
+      MENU_SECTIONS.forEach((sec) => {
+        sec.items.forEach((item) => map.set(item.id, item));
+      });
+      return map;
+    }
+
+    // ==================== 3. LIFF 初始化與跨裝置操作邏輯 ====================
+    async function initLIFF() {
+      const envBadge = document.getElementById("envBadge");
+      const envText = document.getElementById("envText");
+
+      if (typeof liff === "undefined") {
+        envText.textContent = "跨裝置網頁模式";
+        return;
+      }
+
+      // 若尚未填入正式 LIFF ID，仍可順暢於所有裝置瀏覽器使用
+      if (!LIFF_ID || LIFF_ID === "填入你的_LIFF_ID") {
+        state.isInLineClient = liff.isInClient ? liff.isInClient() : false;
+        envText.textContent = state.isInLineClient ? "LINE 內建瀏覽器" : "跨裝置網頁模式";
+        if (state.isInLineClient) {
+          envBadge.classList.add("is-line");
+        }
+        renderAll();
+        return;
+      }
+
+      try {
+        await liff.init({ liffId: LIFF_ID });
+        state.liffReady = true;
+        state.isInLineClient = liff.isInClient();
+        if (state.isInLineClient) {
+          envBadge.classList.add("is-line");
+          envText.textContent = "LINE LIFF 已連線";
+        } else {
+          envText.textContent = "跨裝置網頁模式";
+        }
+      } catch (err) {
+        console.warn("LIFF 初始化未就緒，改採標準跨裝置網頁模式：", err);
+        envText.textContent = "跨裝置網頁模式";
+      }
+      renderAll();
+    }
+
+    /**
+     * 統一網址開啟輔助：LINE 內建環境以 liff.openWindow 開啟，一般瀏覽器直接另開新分頁
+     */
+    function openUrlSmart(url, title) {
+      if (state.isInLineClient && typeof liff !== "undefined" && liff.openWindow) {
+        liff.openWindow({
+          url: url,
+          external: state.externalOpenInLine
+        });
+        showToast("正在開啟：" + title);
+      } else {
+        window.open(url, "_blank", "noopener,noreferrer");
+      }
+    }
+
+    /**
+     * 開啟目標氣象／防災網址或行政區選單
+     */
+    function handleOpenService(event, item) {
+      if (item.action === "county-picker") {
+        event.preventDefault();
+        openRegionPicker("county");
+        return;
+      }
+      if (item.action === "town-picker") {
+        event.preventDefault();
+        openRegionPicker("town");
+        return;
+      }
+      if (state.isInLineClient && typeof liff !== "undefined" && liff.openWindow) {
+        event.preventDefault();
+        openUrlSmart(item.url, item.name);
+      }
+    }
+
+    function normalizeTwText(str) {
+      return String(str || "").toLowerCase().replace(/台/g, "臺");
+    }
+
+    /**
+     * 開啟「縣市／鄉鎮天氣預報」階層選單
+     */
+    function openRegionPicker(mode) {
+      state.pickerMode = mode;
+      state.pickerSelectedCounty = null;
+      state.pickerKeyword = "";
+
+      const backdrop = document.getElementById("pickerBackdrop");
+      const searchInput = document.getElementById("pickerSearchInput");
+      const clearBtn = document.getElementById("pickerClearBtn");
+      searchInput.value = "";
+      clearBtn.classList.remove("visible");
+
+      renderPicker();
+      backdrop.classList.add("open");
+      document.body.style.overflow = "hidden";
+
+      // 桌機／筆電自動聚焦搜尋欄，手機裝置避免強制彈出鍵盤遮擋列表
+      if (window.innerWidth >= 860) {
+        setTimeout(() => searchInput.focus(), 60);
+      }
+    }
+
+    function closeRegionPicker() {
+      const backdrop = document.getElementById("pickerBackdrop");
+      backdrop.classList.remove("open");
+      document.body.style.overflow = "";
+      state.pickerMode = null;
+      state.pickerSelectedCounty = null;
+      state.pickerKeyword = "";
+    }
+
+    function createPickerOptionElement(label, subLabel, url, chatText, onClickAction) {
+      const wrap = document.createElement("div");
+      wrap.className = "picker-item-wrap";
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "picker-item-btn";
+      btn.addEventListener("click", onClickAction);
+
+      const labelSpan = document.createElement("span");
+      labelSpan.textContent = label;
+      btn.appendChild(labelSpan);
+
+      if (subLabel) {
+        const subSpan = document.createElement("span");
+        subSpan.className = "picker-item-sub";
+        subSpan.textContent = subLabel;
+        btn.appendChild(subSpan);
+      }
+
+      wrap.appendChild(btn);
+
+      if (chatText) {
+        const chatBtn = document.createElement("button");
+        chatBtn.type = "button";
+        chatBtn.className = "picker-line-chat-btn" + (state.isInLineClient ? "" : " hidden");
+        chatBtn.title = "傳送至 LINE 聊天室";
+        chatBtn.setAttribute("aria-label", "傳送" + label + "至 LINE 聊天室");
+        chatBtn.textContent = "💬";
+        chatBtn.addEventListener("click", () => sendServiceToLineChat(chatText));
+        wrap.appendChild(chatBtn);
+      }
+
+      return wrap;
+    }
+
+    function renderPicker() {
+      if (!state.pickerMode) return;
+
+      const titleEl = document.getElementById("pickerTitle");
+      const subnoteEl = document.getElementById("pickerSubnote");
+      const backBtn = document.getElementById("pickerBackBtn");
+      const overviewLink = document.getElementById("pickerOverviewLink");
+      const searchInput = document.getElementById("pickerSearchInput");
+      const bodyEl = document.getElementById("pickerBody");
+
+      const kw = normalizeTwText(state.pickerKeyword.trim());
+      bodyEl.innerHTML = "";
+
+      // 若為「鄉鎮天氣預報」且已點選縣市：顯示該縣市鄉鎮市區選單，並在表頭清楚標示縣市名稱
+      if (state.pickerMode === "town" && state.pickerSelectedCounty) {
+        const county = state.pickerSelectedCounty;
+        const townList = CWA_GEO.towns[county.id] || [];
+
+        backBtn.classList.remove("hidden");
+        titleEl.innerHTML = "";
+        const countyPill = document.createElement("span");
+        countyPill.className = "picker-county-pill";
+        countyPill.textContent = "📍 " + county.name;
+        const titleSuffix = document.createElement("span");
+        titleSuffix.textContent = `鄉鎮市區列表（共 ${townList.length} 區）`;
+        titleEl.appendChild(countyPill);
+        titleEl.appendChild(titleSuffix);
+
+        subnoteEl.textContent = `目前註解：以下為「${county.name}」所屬鄉鎮市區，點選後開啟逐 3 小時天氣預報`;
+        overviewLink.href = `https://www.cwa.gov.tw/V8/C/W/County/County.html?CID=${county.id}`;
+        overviewLink.textContent = `查看${county.name}全區預報 ↗`;
+        searchInput.placeholder = `在「${county.name}」中搜尋鄉鎮市區...`;
+
+        const filteredTowns = townList.filter((t) => !kw || normalizeTwText(t.name).includes(kw));
+        if (filteredTowns.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "picker-empty";
+          empty.textContent = `在「${county.name}」找不到符合「${state.pickerKeyword}」的鄉鎮市區`;
+          bodyEl.appendChild(empty);
+          return;
+        }
+
+        const grid = document.createElement("div");
+        grid.className = "picker-grid";
+        filteredTowns.forEach((town) => {
+          const townUrl = `https://www.cwa.gov.tw/V8/C/W/Town/Town.html?TID=${town.id}`;
+          grid.appendChild(
+            createPickerOptionElement(
+              town.name,
+              "預報 ↗",
+              townUrl,
+              `${county.name}${town.name}天氣預報`,
+              () => openUrlSmart(townUrl, `${county.name} ${town.name}天氣預報`)
+            )
+          );
+        });
+        bodyEl.appendChild(grid);
+        return;
+      }
+
+      // 縣市列表選單（模式一「縣市天氣預報」或模式二「鄉鎮天氣預報」步驟 1）
+      backBtn.classList.add("hidden");
+      const isTownStep1 = state.pickerMode === "town";
+      titleEl.textContent = isTownStep1 ? "🏘️ 鄉鎮天氣預報｜選擇縣市" : "🏙️ 縣市天氣預報｜選擇縣市";
+      subnoteEl.textContent = isTownStep1
+        ? "步驟 1/2：請先點選縣市，接著顯示該縣市所屬鄉鎮市區列表"
+        : "請點選欲查詢的縣市（共 22 縣市），將開啟中央氣象署縣市天氣預報";
+      overviewLink.href = isTownStep1
+        ? "https://www.cwa.gov.tw/V8/C/W/Town/index.html"
+        : "https://www.cwa.gov.tw/V8/C/W/County/index.html";
+      overviewLink.textContent = isTownStep1 ? "前往全臺鄉鎮總覽 ↗" : "前往全臺縣市總覽 ↗";
+      searchInput.placeholder = "輸入縣市名稱篩選（例如：台北、臺中、高雄）";
+
+      const areaOrder = ["N", "C", "S", "E", "I"];
+      let matchedTotal = 0;
+
+      areaOrder.forEach((areaKey) => {
+        const areaCounties = CWA_GEO.counties.filter(
+          (c) => c.area === areaKey && (!kw || normalizeTwText(c.name).includes(kw))
+        );
+        if (areaCounties.length === 0) return;
+
+        matchedTotal += areaCounties.length;
+
+        const block = document.createElement("div");
+        block.className = "picker-area-block";
+
+        const areaLabel = document.createElement("div");
+        areaLabel.className = "picker-area-label";
+        areaLabel.textContent = CWA_AREA_NAMES[areaKey];
+        block.appendChild(areaLabel);
+
+        const grid = document.createElement("div");
+        grid.className = "picker-grid";
+
+        areaCounties.forEach((county) => {
+          const townCount = (CWA_GEO.towns[county.id] || []).length;
+          const countyUrl = `https://www.cwa.gov.tw/V8/C/W/County/County.html?CID=${county.id}`;
+          grid.appendChild(
+            createPickerOptionElement(
+              county.name,
+              isTownStep1 ? `${townCount} 區 ›` : "預報 ↗",
+              countyUrl,
+              isTownStep1 ? "" : `${county.name}天氣預報`,
+              () => {
+                if (isTownStep1) {
+                  state.pickerSelectedCounty = county;
+                  state.pickerKeyword = "";
+                  searchInput.value = "";
+                  document.getElementById("pickerClearBtn").classList.remove("visible");
+                  renderPicker();
+                  bodyEl.scrollTop = 0;
+                } else {
+                  openUrlSmart(countyUrl, `${county.name}天氣預報`);
+                }
+              }
+            )
+          );
+        });
+
+        block.appendChild(grid);
+        bodyEl.appendChild(block);
+      });
+
+      if (matchedTotal === 0) {
+        const empty = document.createElement("div");
+        empty.className = "picker-empty";
+        empty.textContent = `找不到符合「${state.pickerKeyword}」的縣市`;
+        bodyEl.appendChild(empty);
+      }
+    }
+
+    /**
+     * 若處於 LINE LIFF 聊天室內，可一鍵將該項查詢文字送出至對話框
+     */
+    async function sendServiceToLineChat(itemName) {
+      if (!state.isInLineClient || typeof liff === "undefined") {
+        showToast("請於 LINE 聊天室開啟以使用傳送指令功能");
+        return;
+      }
+      try {
+        await liff.sendMessages([{ type: "text", text: "查詢" + itemName }]);
+        liff.closeWindow();
+      } catch (err) {
+        console.error("傳送訊息失敗：", err);
+        showToast("傳送失敗，請確認已開啟聊天室寫入權限");
+      }
+    }
+
+    function toggleFavorite(itemId) {
+      const idx = state.favorites.indexOf(itemId);
+      if (idx >= 0) {
+        state.favorites.splice(idx, 1);
+        showToast("已從常用捷徑移除");
+      } else {
+        state.favorites.push(itemId);
+        showToast("已加入常用捷徑");
+      }
+      saveFavorites();
+      renderAll();
+    }
+
+    // ==================== 4. 動態畫面渲染與搜尋篩選 ====================
+    function createServiceCardElement(item) {
+      const card = document.createElement("div");
+      card.className = "service-card" + (item.tone ? " tone-" + item.tone : "");
+
+      const link = document.createElement("a");
+      link.className = "service-link";
+      link.href = item.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.addEventListener("click", (e) => handleOpenService(e, item));
+
+      const iconEl = document.createElement("span");
+      iconEl.className = "service-icon";
+      iconEl.setAttribute("aria-hidden", "true");
+      iconEl.textContent = item.icon;
+
+      const metaEl = document.createElement("span");
+      metaEl.className = "service-meta";
+
+      const nameEl = document.createElement("span");
+      nameEl.className = "service-name";
+      nameEl.textContent = item.name;
+
+      const descEl = document.createElement("span");
+      descEl.className = "service-desc";
+      descEl.textContent = item.desc;
+
+      metaEl.appendChild(nameEl);
+      metaEl.appendChild(descEl);
+      link.appendChild(iconEl);
+      link.appendChild(metaEl);
+
+      // 右側快捷按鈕列（星號收藏 + LINE 聊天傳送）
+      const actions = document.createElement("div");
+      actions.className = "card-actions";
+
+      const isFav = state.favorites.includes(item.id);
+      const favBtn = document.createElement("button");
+      favBtn.type = "button";
+      favBtn.className = "mini-action-btn" + (isFav ? " is-fav" : "");
+      favBtn.title = isFav ? "取消常用釘選" : "釘選至常用捷徑";
+      favBtn.setAttribute("aria-label", favBtn.title);
+      favBtn.textContent = isFav ? "★" : "☆";
+      favBtn.addEventListener("click", () => toggleFavorite(item.id));
+
+      const lineBtn = document.createElement("button");
+      lineBtn.type = "button";
+      lineBtn.className = "mini-action-btn send-line-btn" + (state.isInLineClient ? "" : " hidden");
+      lineBtn.title = "傳送至 LINE 聊天室";
+      lineBtn.setAttribute("aria-label", "傳送" + item.name + "至 LINE 聊天室");
+      lineBtn.textContent = "💬";
+      lineBtn.addEventListener("click", () => sendServiceToLineChat(item.name));
+
+      actions.appendChild(favBtn);
+      actions.appendChild(lineBtn);
+
+      card.appendChild(link);
+      card.appendChild(actions);
+      return card;
+    }
+
+    function renderFavorites() {
+      const panel = document.getElementById("favoritesPanel");
+      const grid = document.getElementById("favoritesGrid");
+      grid.innerHTML = "";
+
+      if (state.keyword.trim() !== "" || state.activeCategory !== "all" || state.favorites.length === 0) {
+        panel.classList.add("hidden");
+        return;
+      }
+
+      const itemMap = getAllItemsMap();
+      const validFavItems = state.favorites.map((id) => itemMap.get(id)).filter(Boolean);
+      if (validFavItems.length === 0) {
+        panel.classList.add("hidden");
+        return;
+      }
+
+      validFavItems.forEach((item) => grid.appendChild(createServiceCardElement(item)));
+      panel.classList.remove("hidden");
+    }
+
+    function renderAll() {
+      renderFavorites();
+
+      const container = document.getElementById("sectionsContainer");
+      const emptyState = document.getElementById("emptyState");
+      const emptyKeyword = document.getElementById("emptyKeyword");
+      const countSummary = document.getElementById("countSummary");
+
+      container.innerHTML = "";
+      const kw = state.keyword.trim().toLowerCase();
+      let visibleItemCount = 0;
+
+      MENU_SECTIONS.forEach((section) => {
+        if (state.activeCategory !== "all" && section.category !== state.activeCategory) {
+          return;
+        }
+
+        const matchedItems = section.items.filter((item) => {
+          if (!kw) return true;
+          const haystack = `${section.title} ${item.name} ${item.desc} ${item.keywords}`.toLowerCase();
+          return haystack.includes(kw);
+        });
+
+        if (matchedItems.length === 0) {
+          return;
+        }
+
+        visibleItemCount += matchedItems.length;
+
+        const secEl = document.createElement("section");
+        secEl.className = "section-group";
+
+        const headEl = document.createElement("div");
+        headEl.className = "section-head";
+
+        const titleWrap = document.createElement("div");
+        titleWrap.className = "section-title-wrap";
+
+        const numEl = document.createElement("span");
+        numEl.className = "section-num";
+        numEl.textContent = section.num;
+
+        const titleEl = document.createElement("h2");
+        titleEl.className = "section-title";
+        titleEl.textContent = section.title;
+
+        titleWrap.appendChild(numEl);
+        titleWrap.appendChild(titleEl);
+
+        const tagEl = document.createElement("span");
+        tagEl.className = "section-tag";
+        tagEl.textContent = `${section.categoryLabel} · ${matchedItems.length} 項`;
+
+        headEl.appendChild(titleWrap);
+        headEl.appendChild(tagEl);
+
+        const gridEl = document.createElement("div");
+        gridEl.className = "cards-grid";
+        matchedItems.forEach((item) => gridEl.appendChild(createServiceCardElement(item)));
+
+        secEl.appendChild(headEl);
+        secEl.appendChild(gridEl);
+        container.appendChild(secEl);
+      });
+
+      countSummary.textContent = `顯示 ${visibleItemCount} 項服務`;
+
+      if (visibleItemCount === 0) {
+        emptyKeyword.textContent = state.keyword.trim() || "所選分類";
+        emptyState.classList.add("visible");
+      } else {
+        emptyState.classList.remove("visible");
+      }
+    }
+
+    // ==================== 5. 互動事件與快捷鍵繫結 ====================
+    function setupEvents() {
+      const searchInput = document.getElementById("searchInput");
+      const clearBtn = document.getElementById("clearSearchBtn");
+      const resetFilterBtn = document.getElementById("resetFilterBtn");
+      const categoryTabs = document.getElementById("categoryTabs");
+      const themeToggleBtn = document.getElementById("themeToggleBtn");
+      const themeText = document.getElementById("themeText");
+      const openModeBtn = document.getElementById("openModeBtn");
+      const openModeText = document.getElementById("openModeText");
+
+      // 恢復主題設定
+      try {
+        const savedTheme = localStorage.getItem("weather_liff_theme_v1");
+        if (savedTheme === "dark") {
+          document.documentElement.setAttribute("data-theme", "dark");
+          themeText.textContent = "淺色模式";
+        }
+      } catch (err) {}
+
+      themeToggleBtn.addEventListener("click", () => {
+        const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+        if (isDark) {
+          document.documentElement.removeAttribute("data-theme");
+          themeText.textContent = "深色模式";
+          try { localStorage.setItem("weather_liff_theme_v1", "light"); } catch (err) {}
+        } else {
+          document.documentElement.setAttribute("data-theme", "dark");
+          themeText.textContent = "淺色模式";
+          try { localStorage.setItem("weather_liff_theme_v1", "dark"); } catch (err) {}
+        }
+      });
+
+      openModeBtn.addEventListener("click", () => {
+        state.externalOpenInLine = !state.externalOpenInLine;
+        openModeText.textContent = state.externalOpenInLine ? "外部瀏覽器" : "LINE 內開啟";
+        showToast(state.externalOpenInLine ? "LINE 中點擊將以外部瀏覽器開啟" : "LINE 中點擊將於內建視窗開啟");
+      });
+
+      searchInput.addEventListener("input", () => {
+        state.keyword = searchInput.value;
+        clearBtn.classList.toggle("visible", state.keyword.length > 0);
+        renderAll();
+      });
+
+      clearBtn.addEventListener("click", () => {
+        searchInput.value = "";
+        state.keyword = "";
+        clearBtn.classList.remove("visible");
+        searchInput.focus();
+        renderAll();
+      });
+
+      resetFilterBtn.addEventListener("click", () => {
+        searchInput.value = "";
+        state.keyword = "";
+        state.activeCategory = "all";
+        clearBtn.classList.remove("visible");
+        categoryTabs.querySelectorAll(".tab-pill").forEach((btn) => {
+          const active = btn.dataset.cat === "all";
+          btn.classList.toggle("active", active);
+          btn.setAttribute("aria-selected", active ? "true" : "false");
+        });
+        renderAll();
+      });
+
+      categoryTabs.addEventListener("click", (e) => {
+        const btn = e.target.closest(".tab-pill");
+        if (!btn) return;
+        state.activeCategory = btn.dataset.cat;
+        categoryTabs.querySelectorAll(".tab-pill").forEach((tab) => {
+          const isActive = tab === btn;
+          tab.classList.toggle("active", isActive);
+          tab.setAttribute("aria-selected", isActive ? "true" : "false");
+        });
+        renderAll();
+      });
+
+      // 電腦／筆電鍵盤快捷鍵：按「/」或「Ctrl+K」快速聚焦搜尋框；「Esc」關閉縣市鄉鎮選單
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && state.pickerMode) {
+          closeRegionPicker();
+          return;
+        }
+        if ((e.key === "/" || (e.ctrlKey && e.key.toLowerCase() === "k")) && document.activeElement !== searchInput && !state.pickerMode) {
+          e.preventDefault();
+          searchInput.focus();
+        }
+      });
+
+      // 縣市與鄉鎮選單互動事件
+      const pickerBackdrop = document.getElementById("pickerBackdrop");
+      const pickerCloseBtn = document.getElementById("pickerCloseBtn");
+      const pickerBackBtn = document.getElementById("pickerBackBtn");
+      const pickerSearchInput = document.getElementById("pickerSearchInput");
+      const pickerClearBtn = document.getElementById("pickerClearBtn");
+      const pickerOverviewLink = document.getElementById("pickerOverviewLink");
+
+      pickerCloseBtn.addEventListener("click", closeRegionPicker);
+      pickerBackdrop.addEventListener("click", (e) => {
+        if (e.target === pickerBackdrop) {
+          closeRegionPicker();
+        }
+      });
+
+      pickerBackBtn.addEventListener("click", () => {
+        state.pickerSelectedCounty = null;
+        state.pickerKeyword = "";
+        pickerSearchInput.value = "";
+        pickerClearBtn.classList.remove("visible");
+        renderPicker();
+      });
+
+      pickerSearchInput.addEventListener("input", () => {
+        state.pickerKeyword = pickerSearchInput.value;
+        pickerClearBtn.classList.toggle("visible", state.pickerKeyword.length > 0);
+        renderPicker();
+      });
+
+      pickerClearBtn.addEventListener("click", () => {
+        pickerSearchInput.value = "";
+        state.pickerKeyword = "";
+        pickerClearBtn.classList.remove("visible");
+        pickerSearchInput.focus();
+        renderPicker();
+      });
+
+      pickerOverviewLink.addEventListener("click", (e) => {
+        if (state.isInLineClient && typeof liff !== "undefined" && liff.openWindow) {
+          e.preventDefault();
+          openUrlSmart(pickerOverviewLink.href, pickerOverviewLink.textContent);
+        }
+      });
+    }
+
+    /**
+     * 依據左上角 LOGO 圖片檔名自動同步頁尾製作者與底部關懷標語
+     */
+    function applyLogoBranding() {
+      const logoImg = document.getElementById("brandLogoImg");
+      if (!logoImg) return;
+      const rawSrc = decodeURIComponent(logoImg.getAttribute("src") || "");
+      const fileName = rawSrc.split("/").pop().split("\\").pop();
+      const logoStem = fileName.replace(/\.[^.]+$/, "").trim() || "氣象報報";
+
+      const makerEl = document.getElementById("makerBrand");
+      const careEl = document.getElementById("careBrand");
+      if (makerEl) makerEl.textContent = logoStem;
+      if (careEl) careEl.textContent = logoStem;
+    }
+
+    // 啟動頁面
+    applyLogoBranding();
+    setupEvents();
+    renderAll();
+    initLIFF();
+  </script>
+</body>
+</html>
